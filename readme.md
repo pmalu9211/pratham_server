@@ -1,17 +1,19 @@
 my-portfolio-server/
 ├── node_modules/
-├── projects/          <-- Your project folders still go here
+├── projects/          
 │   └── example1/
 │       └── index.html
-├── public/            <-- NEW: For our main UI
+├── public/            
 │   ├── css/
 │   │   └── style.css
 │   ├── js/
 │   │   └── script.js
 │   └── index.html
-├── views/             <-- NEW: For file viewer templates
+├── views/             
 │   └── viewer.html
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
-└── server.js          <-- We will replace the code in this file
+└── server.js          
+
+https://gemini.google.com/app/15681e32bfa4904c

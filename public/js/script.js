@@ -2,139 +2,133 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileTreeContainer = document.getElementById('file-tree-container');
     const searchInput = document.getElementById('search-input');
     const loader = document.getElementById('loader');
+    let allTreeItems = []; // To store a flat list of all items for search
 
     // --- Sound Effects using Tone.js ---
     const synth = new Tone.Synth().toDestination();
-    const playClickSound = () => {
-        // A soft, short click
-        synth.triggerAttackRelease("C4", "8n", Tone.now());
+    const playSound = (note, length = "16n") => {
+        try {
+            synth.triggerAttackRelease(note, length, Tone.now());
+        } catch (e) {
+            console.warn("Tone.js context not ready for sound.");
+        }
     };
-    const playToggleSound = () => {
-        // A slightly different pitch for expanding/collapsing
-        synth.triggerAttackRelease("G4", "8n", Tone.now());
+    
+    // --- SVG Icons ---
+    const ICONS = {
+        folder: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`,
+        folderOpen: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><path d="M21 12H3"></path></svg>`,
+        arrow: `<svg class="folder-arrow" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+        file: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>`
     };
-
 
     // --- Fetch and Render File Tree ---
     fetch('/api/files')
         .then(response => response.json())
         .then(data => {
-            loader.style.display = 'none'; // Hide loader
-            const treeHtml = createTreeHtml(data);
-            fileTreeContainer.innerHTML = treeHtml;
+            loader.classList.remove('visible');
+            const treeElement = createTreeElement(data);
+            fileTreeContainer.appendChild(treeElement);
+            allTreeItems = Array.from(fileTreeContainer.querySelectorAll('.tree-item'));
             addEventListeners();
         })
         .catch(error => {
+            loader.classList.remove('visible');
+            fileTreeContainer.innerHTML = `<p style="color: #ff6b6b; padding: 16px;">Could not load file tree. Is the server running?</p>`;
             console.error('Error fetching file tree:', error);
-            loader.style.display = 'none';
-            fileTreeContainer.innerHTML = '<p style="color: #ff6b6b;">Could not load file tree.</p>';
         });
 
-    function createTreeHtml(nodes) {
-        let html = '<ul class="file-tree">';
+    function createTreeElement(nodes) {
+        const ul = document.createElement('ul');
+        ul.className = 'file-tree';
+        
         for (const node of nodes) {
+            const li = document.createElement('li');
+            li.className = 'tree-item';
+            if (node.type === 'folder') {
+                li.classList.add('collapsed');
+            }
+            li.dataset.path = node.path;
+            li.dataset.name = node.name.toLowerCase();
+
             const isProject = node.type === 'folder' && node.children.some(child => child.name === 'index.html');
             
-            html += `<li class="tree-item ${node.type === 'folder' ? 'collapsed' : ''}" data-path="${node.path}">`;
-            
-            // Determine the link and icon for the item
             let link = '#';
-            let icon = '';
-            if (node.type === 'folder') {
-                icon = '<span class="folder-arrow">▶</span> 📁';
-                 // If it's a runnable project, the main link goes to the project root
-                if (isProject) {
-                    link = `/${node.path}/`;
-                }
-            } else {
-                icon = getFileIcon(node.extension);
-                // Link to the custom viewer for .md and .txt files
-                if (node.extension === '.md' || node.extension === '.txt') {
-                    link = `/view/${node.path}`;
-                } else {
-                    link = `/${node.path}`; // Direct link for other files
-                }
+            if (node.type === 'file') {
+                link = (node.extension === '.md' || node.extension === '.txt') ? `/view/${node.path}` : `/${node.path}`;
+            } else if (isProject) {
+                link = `/${node.path}/`;
             }
-            
-            html += `
-                <div class="tree-item-content">
-                    <span class="tree-item-icon">${icon}</span>
-                    <a href="${link}" class="tree-item-link">${node.name}</a>
+
+            li.innerHTML = `
+                <div class="item-row">
+                    <span class="item-icon">
+                        ${node.type === 'folder' ? ICONS.arrow : ICONS.file}
+                    </span>
+                    <a href="${link}" class="item-link ${isProject ? 'project-link' : ''}" ${link !== '#' ? `target="_blank"` : ''}>${node.name}</a>
                 </div>
             `;
             
             if (node.type === 'folder' && node.children.length > 0) {
-                // Recursively create the HTML for children
-                html += createTreeHtml(node.children);
+                li.appendChild(createTreeElement(node.children));
             }
-            
-            html += '</li>';
+            ul.appendChild(li);
         }
-        html += '</ul>';
-        return html;
+        return ul;
     }
     
-    function getFileIcon(extension) {
-        switch(extension) {
-            case '.html': return '🌐';
-            case '.css': return '🎨';
-            case '.js': return '📜';
-            case '.md': return '✒️';
-            case '.txt': return '📄';
-            case '.png': case '.jpg': case '.jpeg': case '.gif': return '🖼️';
-            default: return '❔';
-        }
-    }
-
-
-    // --- Add Event Listeners for Interactivity ---
+    // --- Event Listeners ---
     function addEventListeners() {
-        // For expanding/collapsing folders
         fileTreeContainer.addEventListener('click', (e) => {
-            const itemContent = e.target.closest('.tree-item-content');
-            if (itemContent) {
-                const parentLi = itemContent.parentElement;
-                if (parentLi.classList.contains('tree-item') && parentLi.classList.contains('collapsed')) {
-                    // Check if it's a folder click
-                    if(parentLi.querySelector('.folder-arrow')) {
-                        e.preventDefault(); // Prevent navigation for folders
-                        parentLi.classList.toggle('collapsed');
-                        playToggleSound();
-                    } else {
-                         playClickSound(); // It's a file, play regular click
-                    }
-                } else if(parentLi.classList.contains('tree-item')) {
-                     // It's a file or an already expanded folder
-                     if(parentLi.querySelector('.folder-arrow')) {
-                        e.preventDefault();
-                        parentLi.classList.toggle('collapsed');
-                        playToggleSound();
-                    } else {
-                        playClickSound();
-                    }
-                }
+            const itemRow = e.target.closest('.item-row');
+            if (!itemRow) return;
+
+            const parentLi = itemRow.parentElement;
+            if (parentLi.classList.contains('tree-item') && parentLi.querySelector('.file-tree')) {
+                // This is a folder, toggle it
+                e.preventDefault();
+                parentLi.classList.toggle('collapsed');
+                playSound(parentLi.classList.contains('collapsed') ? 'C4' : 'E4');
+            } else {
+                // This is a file, play standard click sound
+                playSound('A4');
             }
         });
 
-        // Search functionality
-        searchInput.addEventListener('input', () => {
-            const searchTerm = searchInput.value.toLowerCase();
-            const allItems = document.querySelectorAll('.tree-item');
-            
-            allItems.forEach(item => {
-                const itemName = item.querySelector('.tree-item-link').textContent.toLowerCase();
-                if (itemName.includes(searchTerm)) {
-                    // Show the item and all its parents
-                    item.classList.remove('hidden');
-                    let parent = item.parentElement.closest('.tree-item');
-                    while(parent) {
-                        parent.classList.remove('hidden');
-                        parent = parent.parentElement.closest('.tree-item');
-                    }
-                } else {
-                    item.classList.add('hidden');
+        searchInput.addEventListener('input', handleSearch);
+    }
+    
+    // --- Search Functionality ---
+    function handleSearch() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+
+        if (searchTerm === '') {
+            // Reset view if search is cleared
+            allTreeItems.forEach(item => {
+                item.classList.remove('hidden');
+                if (item.querySelector('.file-tree')) {
+                    item.classList.add('collapsed');
                 }
             });
+            return;
+        }
+
+        allTreeItems.forEach(item => {
+            const itemName = item.dataset.name;
+            const matches = itemName.includes(searchTerm);
+
+            if (matches) {
+                item.classList.remove('hidden');
+                // Reveal all parent folders of the matched item
+                let parent = item.parentElement.closest('.tree-item');
+                while (parent) {
+                    parent.classList.remove('hidden');
+                    parent.classList.remove('collapsed'); // Expand parent to show child
+                    parent = parent.parentElement.closest('.tree-item');
+                }
+            } else {
+                item.classList.add('hidden');
+            }
         });
     }
 });

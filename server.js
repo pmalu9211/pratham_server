@@ -1,4 +1,4 @@
-// server.js - V2.2 (Fixed)
+// server.js - V2.3 (Final Fixes)
 
 // 1. Import Modules
 const express = require('express');
@@ -18,14 +18,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(projectsDirectory));
 
 // 4. Recursive File Tree Function
-// This function walks through the directory and builds a JSON representation.
 function buildFileTree(dir) {
     let tree = [];
     try {
         const files = fs.readdirSync(dir, { withFileTypes: true });
 
         for (const file of files) {
-            // Ignore hidden files like .DS_Store
             if (file.name.startsWith('.')) continue;
 
             const fullPath = path.join(dir, file.name);
@@ -36,7 +34,6 @@ function buildFileTree(dir) {
                     name: file.name,
                     type: 'folder',
                     path: relativePath,
-                    // If it's a directory, recursively call the function for its children
                     children: buildFileTree(fullPath)
                 });
             } else {
@@ -48,21 +45,18 @@ function buildFileTree(dir) {
                 });
             }
         }
-        // Simple sort: folders first, then files alphabetically
         tree.sort((a, b) => {
             if (a.type === b.type) return a.name.localeCompare(b.name);
             return a.type === 'folder' ? -1 : 1;
         });
     } catch (error) {
-        // If a directory doesn't exist (e.g., 'projects'), don't crash the server.
         console.warn(`Warning: Could not read directory ${dir}. It may not exist.`);
-        return []; // Return an empty array if the directory can't be read.
+        return [];
     }
     return tree;
 }
 
-// 5. API Endpoint to get the file structure
-// The frontend will call this to get all the data it needs to display.
+// 5. API Endpoint for file structure
 app.get('/api/files', (req, res) => {
     try {
         const fileTree = buildFileTree(projectsDirectory);
@@ -73,13 +67,8 @@ app.get('/api/files', (req, res) => {
     }
 });
 
-// 6. Route for Viewing Markdown and Text Files
-// **FIX APPLIED HERE (V2)**
-// The previous named parameter fix caused a new error with the path-to-regexp library.
-// Using a raw regular expression `/\/view\/(.*)/` is a more robust way
-// to capture all sub-paths without ambiguity in the route parser.
+// 6. Route for Viewing Files
 app.get(/\/view\/(.*)/, (req, res) => {
-    // We now access the captured group from the regex, which is at index 0 of req.params.
     const filePathParam = req.params[0];
     const fullFilePath = path.join(projectsDirectory, filePathParam);
 
@@ -93,33 +82,29 @@ app.get(/\/view\/(.*)/, (req, res) => {
         let contentHtml;
         const fileName = path.basename(fullFilePath);
 
-        // Render Markdown
         if (extension === '.md') {
             contentHtml = marked.parse(data);
-        }
-        // Render Text files
-        else if (extension === '.txt') {
-            // Escape HTML to prevent injection and wrap in <pre> for formatting
+        } else if (extension === '.txt') {
             const escapedText = data.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             contentHtml = `<pre><code>${escapedText}</code></pre>`;
         } else {
             return res.status(400).send('Unsupported file type for viewing.');
         }
 
-        // Use a template file to display the content beautifully
         fs.readFile(path.join(__dirname, 'views', 'viewer.html'), 'utf8', (err, template) => {
             if (err) {
                 console.error(`Could not load viewer template.`, err);
                 return res.status(500).send('Could not load viewer template.');
             }
+            // **FIX APPLIED HERE**
+            // Use a regular expression with the global flag 'g' to replace all occurrences.
             const finalHtml = template
-                .replace('{{fileContent}}', contentHtml)
-                .replace('{{fileName}}', fileName);
+                .replace(/{{fileContent}}/g, contentHtml)
+                .replace(/{{fileName}}/g, fileName);
             res.send(finalHtml);
         });
     });
 });
-
 
 // 7. Start Server
 app.listen(PORT, () => {
