@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search in Rotated Sorted Array II - Enhanced Animation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1e23;
+            --container-bg: #282c34;
+            --primary-color: #61afef;
+            --secondary-color: #c678dd;
+            --accent-color: #98c379;
+            --warning-color: #e5c07b;
+            --error-color: #e06c75;
+            --text-color: #abb2bf;
+            --text-light: #f0f0f0;
+            --border-color: #3b4048;
+            --font-body: 'Poppins', sans-serif;
+            --font-code: 'Source Code Pro', monospace;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2 {
+            color: var(--primary-color);
+            font-weight: 300;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            background-color: var(--container-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 95%;
+            max-width: 1100px;
+            border: 1px solid var(--border-color);
+        }
+
+        .controls-main, .controls-playback {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="text"], input[type="range"] {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--text-light);
+            font-size: 16px;
+            font-family: var(--font-body);
+        }
+        
+        input[type="text"] {
+            min-width: 200px;
+        }
+        
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--primary-color);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        #reset-btn { background-color: var(--error-color); }
+        #play-pause-btn { background-color: var(--accent-color); }
+
+        .slider-container { display: flex; align-items: center; gap: 10px; }
+
+        #animation-box {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+            height: 120px; /* Increased height for pointers */
+            align-items: flex-start;
+            position: relative;
+            padding: 0 10px;
+        }
+        
+        .cell-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            width: 55px;
+        }
+
+        .cell {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            transition: all 0.5s ease-in-out;
+        }
+
+        .pointer {
+            position: absolute;
+            bottom: -35px; /* Position below the cell */
+            font-size: 14px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 6px;
+            transition: left 0.5s ease-in-out, opacity 0.5s ease;
+            opacity: 0;
+            z-index: 10;
+        }
+        
+        .pointer.visible { opacity: 1; }
+        
+        #start-ptr { background-color: var(--error-color); color: white; }
+        #mid-ptr { background-color: var(--warning-color); color: var(--bg-color); }
+        #end-ptr { background-color: var(--primary-color); color: white; }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(229, 192, 123, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(229, 192, 123, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(229, 192, 123, 0); }
+        }
+
+        .highlight-compare {
+            background-color: var(--warning-color) !important;
+            color: var(--bg-color);
+            transform: scale(1.1);
+            animation: pulse 1.5s infinite;
+        }
+
+        .highlight-found {
+            background-color: var(--accent-color) !important;
+            border-color: var(--text-light);
+            color: var(--bg-color);
+            transform: scale(1.25);
+            box-shadow: 0 0 25px var(--accent-color);
+        }
+
+        .highlight-discard {
+            opacity: 0.3;
+            transform: scale(0.9);
+        }
+
+        #status {
+            margin-top: 15px;
+            font-size: 1.1em;
+            color: var(--text-light);
+            min-height: 25px;
+            text-align: center;
+            background-color: rgba(0,0,0,0.2);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .code-display {
+            background-color: #1e1e2d;
+            padding: 20px;
+            border-radius: 12px;
+            font-family: var(--font-code);
+            white-space: pre;
+            line-height: 1.6;
+            width: 95%;
+            max-width: 500px;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .code-line {
+            transition: background-color 0.3s ease;
+            border-radius: 4px;
+            padding: 0 5px;
+        }
+
+        .highlight-code {
+            background-color: rgba(97, 175, 239, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Search in Rotated Sorted Array II</h1>
+
+    <div class="container">
+        <div class="controls-main">
+            <label for="array-input">Array:</label>
+            <input type="text" id="array-input" value="4,5,6,6,7,0,1,2,4,4">
+            <label for="target-input">Target:</label>
+            <input type="text" id="target-input" value="0">
+            <button id="reset-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+                Reset
+            </button>
+        </div>
+        
+        <div class="controls-playback">
+            <button id="prev-btn" disabled>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8.354 1.646a.5.5 0 0 1 0 .708L2.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/><path d="M12.354 1.646a.5.5 0 0 1 0 .708L6.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>
+                Prev
+            </button>
+            <button id="play-pause-btn" disabled>
+                 <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/></svg>
+                 <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="display:none;"><path d="M6 3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/></svg>
+                Play
+            </button>
+            <button id="next-btn" disabled>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M3.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L9.293 8 3.646 2.354a.5.5 0 0 1 0-.708z"/><path d="M7.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L13.293 8 7.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
+                Next
+            </button>
+             <div class="slider-container">
+                <label for="speed-slider">Speed:</label>
+                <input type="range" id="speed-slider" min="100" max="2000" value="700" step="100">
+            </div>
+        </div>
+
+        <div id="animation-box"></div>
+        <p id="status">Enter an array and a target, then click 'Reset'.</p>
+
+        <div id="code-display" class="code-display"></div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const arrayInput = document.getElementById('array-input');
+    const targetInput = document.getElementById('target-input');
+    const resetBtn = document.getElementById('reset-btn');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const speedSlider = document.getElementById('speed-slider');
+    const playIcon = document.getElementById('play-icon');
+    const pauseIcon = document.getElementById('pause-icon');
+    const animationBox = document.getElementById('animation-box');
+    const statusEl = document.getElementById('status');
+    const codeDisplay = document.getElementById('code-display');
+
+    let animationHistory = [];
+    let currentIndex = -1;
+    let autoPlayInterval = null;
+    let nums = [];
+
+    const code = [
+        `bool search(vector<int>& nums, int target) {`,
+        `    int start = 0, end = nums.size() - 1;`,
+        `    while(start < end){`,
+        `        int mid = end - (end - start + 1)/2;`,
+        `        if(nums[start] == nums[mid] && nums[mid] == nums[end]) {`,
+        `            ++start; --end;`,
+        `        } else if(nums[mid] >= nums[start]){`,
+        `            if(target > nums[mid] || target < nums[start])`,
+        `                start = mid + 1;`,
+        `            else`,
+        `                end = mid;`,
+        `        } else {`,
+        `            if(target <= nums[mid] || target > nums[end])`,
+        `                end = mid;`,
+        `            else`,
+        `                start = mid + 1;`,
+        `        }`,
+        `    }`,
+        `    return nums[start] == target;`,
+        `}`
+    ];
+
+    const generateAnimationSteps = (localNums, target) => {
+        let history = [];
+        let start = 0;
+        let end = localNums.length - 1;
+
+        const addState = (line, msg, highlight = [], found = null) => {
+            history.push({
+                line, start, end, mid: currentMid, msg, 
+                highlight, found,
+            });
+        };
+        
+        let currentMid = null;
+        addState(2, "Initializing pointers.", [start, end]);
+
+        while (start < end) {
+            addState(3, `Looping: is start (${start}) < end (${end})? Yes.`);
+            
+            currentMid = end - Math.floor((end - start + 1) / 2);
+            addState(4, `Calculating mid: ${currentMid}.`, [start, currentMid, end]);
+
+            addState(5, `Checking for duplicates: nums[${start}] (${localNums[start]}), nums[${currentMid}] (${localNums[currentMid]}), nums[${end}] (${localNums[end]})`, [start, currentMid, end]);
+            if (localNums[start] === localNums[currentMid] && localNums[currentMid] === localNums[end]) {
+                 addState(6, "Duplicates found. Shrinking search space by moving pointers inward.");
+                start++;
+                end--;
+            } else if (localNums[currentMid] >= localNums[start]) {
+                addState(7, `Left half (from index ${start} to ${currentMid}) is sorted.`);
+                
+                addState(8, `Is target (${target}) outside [${localNums[start]}, ${localNums[currentMid]}]?`);
+                if (target > localNums[currentMid] || target < localNums[start]) {
+                    addState(9, `Yes. Target is not in the sorted left half. Search right.`);
+                    start = currentMid + 1;
+                } else {
+                    addState(11, `No. Target could be in the sorted left half. Search left.`);
+                    end = currentMid;
+                }
+            } else {
+                addState(12, `Right half (from index ${currentMid} to ${end}) must be sorted.`);
+                
+                addState(13, `Is target (${target}) inside (${localNums[currentMid]}, ${localNums[end]}]?`);
+                if (target <= localNums[currentMid] || target > localNums[end]) {
+                    addState(14, `No. Target is not in the sorted right half. Search left.`);
+                    end = currentMid;
+                } else {
+                    addState(16, `Yes. Target could be in the sorted right half. Search right.`);
+                    start = currentMid + 1;
+                }
+            }
+             currentMid = null;
+             addState(null, `Updating search range to [${start}, ${end}].`);
+        }
+        
+        addState(3, `Loop finished: start (${start}) is not less than end (${end}).`);
+        addState(18, `Checking final element: is nums[${start}] (${localNums[start]}) == target (${target})?`);
+        
+        if (start < localNums.length && localNums[start] === target) {
+            addState(18, `✅ Found target ${target} at index ${start}.`, [], start);
+        } else {
+            addState(18, `❌ Target ${target} not found.`, []);
+        }
+        
+        return history;
+    };
+
+    const drawArray = () => {
+        animationBox.innerHTML = '';
+        nums.forEach((val, index) => {
+            const cellContainer = document.createElement('div');
+            cellContainer.className = 'cell-container';
+            cellContainer.id = `container-${index}`;
+
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `cell-${index}`;
+            cell.textContent = val;
+            
+            cellContainer.appendChild(cell);
+            animationBox.appendChild(cellContainer);
+        });
+
+        ['start', 'mid', 'end'].forEach(ptrName => {
+            const ptr = document.createElement('div');
+            ptr.className = 'pointer';
+            ptr.id = `${ptrName}-ptr`;
+            ptr.textContent = ptrName;
+            animationBox.appendChild(ptr);
+        });
+    };
+    
+    const drawCode = (highlightLine = -1) => {
+        codeDisplay.innerHTML = code.map((line, index) =>
+            `<div class="code-line ${index + 1 === highlightLine ? 'highlight-code' : ''}">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`
+        ).join('');
+    };
+
+    const renderState = () => {
+        if (currentIndex < 0 || currentIndex >= animationHistory.length) return;
+
+        const state = animationHistory[currentIndex];
+        const { line, start, end, mid, msg, highlight, found } = state;
+        
+        statusEl.textContent = msg;
+        drawCode(line);
+
+        // Update pointers
+        const pointers = { start, mid, end };
+        Object.keys(pointers).forEach(key => {
+            const ptrEl = document.getElementById(`${key}-ptr`);
+            const index = pointers[key];
+            if (index !== null && index >= 0) {
+                const cellContainer = document.getElementById(`container-${index}`);
+                if (cellContainer) {
+                    ptrEl.style.left = `${cellContainer.offsetLeft + (cellContainer.offsetWidth / 2) - (ptrEl.offsetWidth / 2)}px`;
+                    ptrEl.classList.add('visible');
+                }
+            } else {
+                ptrEl.classList.remove('visible');
+            }
+        });
+        
+        // Update cell styles
+        document.querySelectorAll('.cell').forEach((cell, index) => {
+            cell.classList.remove('highlight-compare', 'highlight-found', 'highlight-discard');
+            cell.style.animation = ''; // remove pulse
+            
+            if (found !== null) { // final state
+                if (index === found) {
+                    cell.classList.add('highlight-found');
+                } else {
+                    cell.classList.add('highlight-discard');
+                }
+            } else { // intermediate state
+                if (index < start || index > end) {
+                    cell.classList.add('highlight-discard');
+                }
+                if(highlight.includes(index)){
+                    cell.classList.add('highlight-compare');
+                }
+            }
+        });
+
+        // Update button states
+        prevBtn.disabled = currentIndex <= 0;
+        nextBtn.disabled = currentIndex >= animationHistory.length - 1;
+        playPauseBtn.disabled = currentIndex >= animationHistory.length - 1;
+        if (currentIndex >= animationHistory.length - 1) {
+            pauseAnimation();
+        }
+    };
+    
+    const resetAnimation = () => {
+        pauseAnimation();
+        const numsStr = arrayInput.value.split(',').filter(s => s.trim() !== '');
+        nums = numsStr.map(n => parseInt(n.trim(), 10));
+        const target = parseInt(targetInput.value.trim(), 10);
+
+        if (nums.some(isNaN) || isNaN(target)) {
+            statusEl.textContent = "Invalid input. Please enter numbers only.";
+            return;
+        }
+        
+        drawArray();
+        drawCode();
+        
+        setTimeout(() => {
+            animationHistory = generateAnimationSteps(nums, target);
+            currentIndex = 0;
+            renderState();
+        }, 100);
+    };
+
+    const stepNext = () => {
+        if (currentIndex < animationHistory.length - 1) {
+            currentIndex++;
+            renderState();
+        }
+    };
+
+    const stepPrev = () => {
+        if (currentIndex > 0) {
+            currentIndex--;
+            renderState();
+        }
+    };
+    
+    const playAnimation = () => {
+        playPauseBtn.innerHTML = pauseIcon.outerHTML + ' Pause';
+        playPauseBtn.onclick = pauseAnimation;
+        const delay = 2100 - speedSlider.value;
+        autoPlayInterval = setInterval(stepNext, delay);
+    };
+    
+    const pauseAnimation = () => {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+        playPauseBtn.innerHTML = playIcon.outerHTML + ' Play';
+        playPauseBtn.onclick = playAnimation;
+    };
+    
+    speedSlider.addEventListener('input', () => {
+        if (autoPlayInterval) {
+            pauseAnimation();
+            playAnimation();
+        }
+    });
+
+    resetBtn.addEventListener('click', resetAnimation);
+    nextBtn.addEventListener('click', stepNext);
+    prevBtn.addEventListener('click', stepPrev);
+    playPauseBtn.addEventListener('click', playAnimation);
+
+    // Initial load
+    resetAnimation();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dutch National Flag Algorithm Visualization</title>
+    <style>
+        :root {
+            --red-color: #e74c3c;
+            --white-color: #ecf0f1;
+            --blue-color: #3498db;
+            --background-color: #2c3e50;
+            --text-color: #ecf0f1;
+            --pointer-color: #f1c40f;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .controls {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .controls label {
+            font-size: 1.1em;
+        }
+
+        .controls input[type="text"] {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            background-color: var(--white-color);
+            color: var(--background-color);
+            width: 200px;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: var(--blue-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .controls button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .controls button:disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #animation-container {
+            position: relative;
+            margin-top: 40px;
+            height: 150px;
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .array-container {
+            display: flex;
+            gap: 5px;
+            position: relative;
+            height: 60px;
+        }
+
+        .array-element {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--background-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            transition: transform 0.5s ease-in-out, background-color 0.5s;
+        }
+
+        .pointer-container {
+            position: absolute;
+            bottom: -70px; /* Increased space for better visibility */
+            width: 100%;
+            height: 60px;
+        }
+        
+        .pointer {
+            position: absolute;
+            width: 50px;
+            text-align: center;
+            transition: left 0.5s ease-in-out;
+            font-size: 0.9em;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .pointer-arrow {
+            font-size: 2em;
+            color: var(--pointer-color);
+            line-height: 1;
+        }
+
+        .pointer-label {
+            background-color: var(--pointer-color);
+            color: var(--background-color);
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        #status-text {
+            margin-top: 20px;
+            font-size: 1.2em;
+            min-height: 2em;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        #code-display {
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #code-display pre {
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            color: var(--text-color);
+        }
+        
+        .highlight {
+           background-color: rgba(241, 196, 15, 0.5);
+           border-radius: 3px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>🇳🇱 Dutch National Flag Algorithm</h1>
+
+    <div class="controls">
+        <label for="array-input">Array (0,1,2 only):</label>
+        <input type="text" id="array-input" value="2,0,2,1,1,0">
+        <button id="generate-btn">Generate</button>
+        <button id="start-btn" disabled>▶ Start</button>
+        <button id="prev-btn" disabled>❮ Prev</button>
+        <button id="next-btn" disabled>Next ❯</button>
+    </div>
+
+    <div id="animation-container">
+        <div class="array-container" id="array-container"></div>
+        <div class="pointer-container">
+            <div class="pointer" id="pointer0">
+                <div class="pointer-arrow">↓</div>
+                <div class="pointer-label">index0</div>
+            </div>
+            <div class="pointer" id="pointer1">
+                <div class="pointer-arrow">↓</div>
+                <div class="pointer-label">index1</div>
+            </div>
+            <div class="pointer" id="pointer2">
+                <div class="pointer-arrow">↓</div>
+                <div class="pointer-label">index2</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="status-text"></div>
+
+    <div id="code-display">
+        <pre><code id="code-block">
+while(index1 <= index2){
+    if(nums[index1] == 1) {
+        index1++;
+    }
+    else if(nums[index1] == 0){
+        swap(nums[index0++], nums[index1++]);
+    }
+    else { // nums[index1] == 2
+        swap(nums[index2--], nums[index1]);   
+    }
+}
+        </code></pre>
+    </div>
+
+
+    <script>
+        const arrayInput = document.getElementById('array-input');
+        const generateBtn = document.getElementById('generate-btn');
+        const startBtn = document.getElementById('start-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const arrayContainer = document.getElementById('array-container');
+        const statusText = document.getElementById('status-text');
+        
+        const pointer0Div = document.getElementById('pointer0');
+        const pointer1Div = document.getElementById('pointer1');
+        const pointer2Div = document.getElementById('pointer2');
+
+        const codeLines = {
+            loop: document.getElementById('code-block').childNodes[0],
+            if1: document.getElementById('code-block').childNodes[2],
+            inc1: document.getElementById('code-block').childNodes[4],
+            if0: document.getElementById('code-block').childNodes[6],
+            swap01: document.getElementById('code-block').childNodes[8],
+            if2: document.getElementById('code-block').childNodes[10],
+            swap21: document.getElementById('code-block').childNodes[12],
+        };
+
+        let steps = [];
+        let currentStep = -1;
+        let arrayState = [];
+        
+        const COLORS = {
+            0: 'var(--red-color)',
+            1: 'var(--white-color)',
+            2: 'var(--blue-color)'
+        };
+
+        function generateArray() {
+            const inputText = arrayInput.value.trim();
+            const arr = inputText.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n >= 0 && n <= 2);
+
+            if (arr.length === 0) {
+                statusText.textContent = "Please enter a valid array of 0s, 1s, and 2s.";
+                return;
+            }
+            arrayState = [...arr];
+            calculateSteps(arr);
+            currentStep = -1;
+            displayStep(currentStep);
+            startBtn.disabled = false;
+            nextBtn.disabled = false;
+            prevBtn.disabled = true;
+            statusText.textContent = "Array generated. Press Start or Next to begin sorting.";
+        }
+
+        function calculateSteps(nums) {
+            steps = [];
+            let index0 = 0;
+            let index1 = 0;
+            let index2 = nums.length - 1;
+
+            // Initial state
+            steps.push({
+                array: [...nums],
+                p0: index0,
+                p1: index1,
+                p2: index2,
+                message: "Initial state.",
+                line: null
+            });
+
+            while (index1 <= index2) {
+                steps.push({
+                    array: [...nums],
+                    p0: index0, p1: index1, p2: index2,
+                    message: `Checking element at index1 (${nums[index1]}).`,
+                    line: 'loop'
+                });
+                if (nums[index1] === 1) {
+                    steps.push({
+                        array: [...nums],
+                        p0: index0, p1: index1, p2: index2,
+                        message: `Element is 1. Incrementing index1.`,
+                        line: 'if1'
+                    });
+                    index1++;
+                } else if (nums[index1] === 0) {
+                    steps.push({
+                        array: [...nums],
+                        p0: index0, p1: index1, p2: index2,
+                        message: `Element is 0. Swapping with element at index0.`,
+                        line: 'if0',
+                        swap: [index0, index1]
+                    });
+                    [nums[index0], nums[index1]] = [nums[index1], nums[index0]]; // swap
+                    index0++;
+                    index1++;
+                } else { // nums[index1] == 2
+                    steps.push({
+                        array: [...nums],
+                        p0: index0, p1: index1, p2: index2,
+                        message: `Element is 2. Swapping with element at index2.`,
+                        line: 'if2',
+                        swap: [index1, index2]
+                    });
+                    [nums[index1], nums[index2]] = [nums[index2], nums[index1]]; // swap
+                    index2--;
+                }
+            }
+
+            steps.push({
+                array: [...nums],
+                p0: index0,
+                p1: index1,
+                p2: index2,
+                message: "Sorting complete!",
+                line: null
+            });
+        }
+
+        function displayStep(stepIndex) {
+            if (stepIndex < -1 || stepIndex >= steps.length) return;
+            
+            const step = stepIndex === -1 ? { array: arrayState, p0: 0, p1: 0, p2: arrayState.length - 1, message: "Initial state.", line: null } : steps[stepIndex];
+            const { array, p0, p1, p2, message, swap, line } = step;
+
+            arrayContainer.innerHTML = '';
+            array.forEach((val, index) => {
+                const element = document.createElement('div');
+                element.className = 'array-element';
+                element.textContent = val;
+                element.style.backgroundColor = COLORS[val];
+                element.id = `elem-${index}`;
+                arrayContainer.appendChild(element);
+            });
+            
+            // Highlight swapped elements
+            document.querySelectorAll('.array-element').forEach(el => el.style.transform = '');
+            if (swap) {
+                const [i, j] = swap;
+                const elemI = document.getElementById(`elem-${i}`);
+                const elemJ = document.getElementById(`elem-${j}`);
+                if(elemI && elemJ) {
+                    elemI.style.transform = 'scale(1.15)';
+                    elemJ.style.transform = 'scale(1.15)';
+                }
+            }
+
+            const elementWidth = 50; // as in CSS
+            const gap = 5; // as in CSS
+
+            pointer0Div.style.left = `${p0 * (elementWidth + gap)}px`;
+            pointer1Div.style.left = `${p1 * (elementWidth + gap)}px`;
+            pointer2Div.style.left = `${p2 * (elementWidth + gap)}px`;
+            
+            statusText.textContent = message;
+            highlightCodeLine(line);
+            
+            updateNavButtons();
+        }
+
+        function highlightCodeLine(lineKey) {
+            // Clear previous highlights
+            Object.values(codeLines).forEach(el => {
+                if(el && el.nodeType === 1) { // Check if it's an element node
+                    el.classList.remove('highlight');
+                } else if(el) { // It's a text node, wrap it to highlight
+                    const parent = el.parentNode;
+                    const span = parent.querySelector('.highlight-wrapper');
+                    if (span) {
+                        parent.replaceChild(document.createTextNode(span.textContent), span);
+                    }
+                }
+            });
+
+            // Add new highlight
+            if (lineKey && codeLines[lineKey]) {
+                const node = codeLines[lineKey];
+                if (node.nodeType === 1) {
+                    node.classList.add('highlight');
+                } else {
+                    const span = document.createElement('span');
+                    span.className = 'highlight highlight-wrapper';
+                    span.textContent = node.textContent;
+                    node.parentNode.replaceChild(span, node);
+                }
+            }
+        }
+
+        function updateNavButtons() {
+            prevBtn.disabled = currentStep <= 0;
+            nextBtn.disabled = currentStep >= steps.length - 1;
+            startBtn.disabled = currentStep >= steps.length - 1;
+        }
+
+        function handleNext() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                displayStep(currentStep);
+            }
+        }
+
+        function handlePrev() {
+            if (currentStep > 0) {
+                currentStep--;
+                displayStep(currentStep);
+            }
+        }
+        
+        let autoPlayInterval = null;
+
+        function startAutoPlay() {
+            startBtn.textContent = '❚❚ Pause';
+            nextBtn.disabled = true;
+            prevBtn.disabled = true;
+            generateBtn.disabled = true;
+
+            autoPlayInterval = setInterval(() => {
+                if (currentStep < steps.length - 1) {
+                    handleNext();
+                } else {
+                    stopAutoPlay();
+                }
+            }, 1500);
+        }
+
+        function stopAutoPlay() {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+            startBtn.textContent = '▶ Start';
+            generateBtn.disabled = false;
+            updateNavButtons();
+        }
+        
+        function handleStart() {
+            if (autoPlayInterval) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        }
+
+
+        generateBtn.addEventListener('click', generateArray);
+        nextBtn.addEventListener('click', handleNext);
+        prevBtn.addEventListener('click', handlePrev);
+        startBtn.addEventListener('click', handleStart);
+        
+        // Initial generation
+        generateArray();
+
+    </script>
+</body>
+</html>

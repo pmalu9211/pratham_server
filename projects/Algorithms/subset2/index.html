@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subsets II Algorithm Visualizer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #111827; /* Dark Blue-Gray */
+            --panel-color: #1F2937; /* Lighter Blue-Gray */
+            --text-color: #E5E7EB; /* Light Gray */
+            --primary-color: #3B82F6; /* Bright Blue */
+            --accent-color: #F59E0B; /* Amber */
+            --prune-color: #6B7280; /* Medium Gray */
+            --leaf-color: #10B981; /* Emerald Green */
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: "Fira Code", "SF Mono", "Consolas", "Monaco", monospace;
+        }
+
+        /* Basic Setup & Typography */
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Main Layout */
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .tree-pane {
+            flex-grow: 1;
+            height: 100%;
+            overflow: hidden; /* D3 zoom handles panning */
+            position: relative;
+        }
+
+        .sidebar {
+            width: 400px;
+            flex-shrink: 0;
+            background-color: var(--panel-color);
+            padding: 1.5rem 2rem;
+            box-shadow: -8px 0 25px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            border-left: 1px solid #374151;
+        }
+
+        /* SVG Tree Styling */
+        .tree-svg {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        .tree-svg:active {
+            cursor: grabbing;
+        }
+
+        .node circle {
+            stroke-width: 2.5px;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+        }
+
+        .node text {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            fill: var(--text-color);
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .link {
+            fill: none;
+            stroke: #4B5563; /* Gray-600 */
+            stroke-width: 2px;
+            transition: stroke 0.4s ease, stroke-width 0.4s ease, d 0.5s ease;
+        }
+
+        .link-active {
+            stroke: var(--accent-color);
+            stroke-width: 4px;
+        }
+        
+        .node-active circle {
+            fill: var(--primary-color);
+            stroke: var(--accent-color);
+            r: 22px; /* 2xl rounded */
+        }
+
+        .node-leaf circle {
+            fill: var(--leaf-color);
+            stroke: #A7F3D0; /* Lighter Emerald */
+        }
+        
+        .node-pruned circle {
+            fill: var(--panel-color);
+            stroke: var(--prune-color);
+            stroke-dasharray: 4;
+        }
+        
+        .node-pruned text {
+            fill: var(--prune-color);
+        }
+
+        /* Tooltip for Pruned Nodes */
+        .tooltip {
+            position: absolute;
+            background-color: rgba(17, 24, 39, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border: 1px solid var(--primary-color);
+        }
+
+        /* Sidebar Components */
+        h2 {
+            font-size: 1.25rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background: var(--bg-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        .stat:last-child { margin-bottom: 0; }
+
+        .stat-label { color: #9CA3AF; }
+
+        .stat-value {
+            font-weight: 600;
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            background-color: #2b3546;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .controls button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .controls button:hover:not(:disabled) {
+            background-color: #2563EB; /* Darker Blue */
+            transform: translateY(-2px);
+        }
+
+        .controls button:disabled {
+            background-color: #4B5563;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
+        /* Final Subsets Panel */
+        .subsets-output-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 50px;
+        }
+
+        .subset-item {
+            background-color: var(--panel-color);
+            color: var(--text-color);
+            font-family: var(--font-mono);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            border: 1px solid #374151;
+            transition: all 0.3s ease;
+        }
+
+        .subset-item.new {
+            background-color: var(--leaf-color);
+            color: var(--bg-color);
+            font-weight: bold;
+            transform: scale(1.1);
+        }
+
+        /* Syntax-highlighted Code */
+        .code-snippet-card pre {
+            background: #0d1117;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            color: #c9d1d9;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+        
+        .code-snippet-card code .comment { color: #8b949e; }
+        .code-snippet-card code .keyword { color: #ff7b72; }
+        .code-snippet-card code .type { color: #79c0ff; }
+        .code-snippet-card code .function { color: #d2a8ff; }
+        .code-snippet-card code .punct { color: #c9d1d9; }
+        .code-snippet-card code .op { color: #ff7b72; }
+        .code-snippet-card code .line-highlight { 
+            background-color: rgba(245, 158, 11, 0.2);
+            display: block;
+            margin: 0 -1rem;
+            padding: 0.1rem 1rem;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+            }
+            .tree-pane { height: 60%; }
+            .sidebar {
+                width: 100%;
+                height: 40%;
+                box-shadow: 0 -8px 25px rgba(0,0,0,0.3);
+                border-left: none;
+                border-top: 1px solid #374151;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="tree-pane">
+            <svg class="tree-svg"></svg>
+            <div class="tooltip"></div>
+        </div>
+        <div class="sidebar">
+            <div class="card stats-panel">
+                <div class="stat">
+                    <span class="stat-label">Depth</span>
+                    <span id="depth-stat" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Total Calls</span>
+                    <span id="calls-stat" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Subsets Found</span>
+                    <span id="subsets-stat" class="stat-value">0</span>
+                </div>
+            </div>
+
+            <div class="card controls">
+                <div class="controls-grid">
+                    <button id="prev-step" title="Previous Step">Prev</button>
+                    <button id="play-pause" title="Play/Pause">Play</button>
+                    <button id="next-step" title="Next Step">Next</button>
+                </div>
+            </div>
+            
+            <div class="card final-subsets-card">
+                 <h2>Final Subsets</h2>
+                 <div id="subsets-output" class="subsets-output-grid"></div>
+            </div>
+
+            <div class="card code-snippet-card">
+                <h2>Algorithm</h2>
+                <pre><code id="code-block"
+><span class="keyword">class</span> <span class="type">Solution</span> {
+<span class="keyword">public:</span>
+  <span id="line-func-def"><span class="type">void</span> <span class="function">backtrack</span>(<span class="type">vector&lt;vector&lt;int&gt;&gt;&</span> <span class="op">ans</span>, ...) {</span>
+    <span id="line-loop"><span class="keyword">for</span>(<span class="type">int</span> i = idx; i &lt; nums.size(); i++) {</span>
+      <span id="line-prune"><span class="keyword">while</span>(i > idx && nums[i-1] == nums[i]) i++;</span>
+      
+      <span id="line-push"><span class="comment">// "Take" the element</span></span>
+      <span id="line-push-2">currArray.push_back(nums[i]);</span>
+      <span id="line-add-ans"><span class="op">ans</span>.push_back(currArray);</span>
+      
+      <span id="line-recurse"><span class="comment">// Recurse</span></span>
+      <span id="line-recurse-2"><span class="function">backtrack</span>(ans, curr, nums, i + 1);</span>
+      
+      <span id="line-pop"><span class="comment">// Backtrack</span></span>
+      <span id="line-pop-2">currArray.pop_back();</span>
+    }
+  }
+};</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- 1. CORE ALGORITHM & TRACE GENERATION ---
+            // Pre-computes the recursion trace based on the provided C++ logic.
+            // This now correctly handles the initial empty set and logs steps.
+            const nums = [1, 2, 2, 3,3,3,3];
+            const trace = [];
+            let callCounter = 0;
+            
+            function generateTrace(inputNums) {
+                const sortedNums = [...inputNums].sort((a, b) => a - b);
+                
+                // Initial state: The final answer `ans` starts with the empty set.
+                trace.push({ id: 0, parentId: null, subset: [], action: 'root', depth: 0, highlightLine: '' });
+
+                function backtrack(start, current, parentId, depth) {
+                    const callId = parentId;
+                    
+                    // Explore further options from the current state.
+                    for (let i = start; i < sortedNums.length; i++) {
+                        // Action: Pruning due to duplicate element.
+                        if (i > start && sortedNums[i] === sortedNums[i - 1]) {
+                            trace.push({
+                                id: ++callCounter,
+                                parentId: callId,
+                                subset: [...current],
+                                action: 'prune',
+                                reason: `nums[${i}]=${sortedNums[i]} is a duplicate`,
+                                depth: depth + 1,
+                                highlightLine: 'line-prune'
+                            });
+                            continue;
+                        }
+
+                        // Action: "Take" the element.
+                        current.push(sortedNums[i]);
+                        const takeCallId = ++callCounter;
+                        trace.push({
+                            id: takeCallId,
+                            parentId: callId,
+                            subset: [...current],
+                            action: 'leaf', // This is now a "leaf" because a new subset is added to `ans`.
+                            depth: depth + 1,
+                            highlightLine: 'line-add-ans'
+                        });
+
+                        // Action: Make a recursive call to explore further.
+                        const recurseCallId = ++callCounter;
+                        trace.push({
+                            id: recurseCallId,
+                            parentId: takeCallId,
+                            subset: [...current],
+                            action: 'recurse',
+                            depth: depth + 1,
+                            highlightLine: 'line-recurse-2'
+                        });
+                        backtrack(i + 1, current, recurseCallId, depth + 1);
+                        
+                        // Action: "Backtrack" by removing the element.
+                        current.pop();
+                        trace.push({
+                            id: ++callCounter,
+                            parentId: takeCallId, 
+                            subset: [...current],
+                            action: 'backtrack',
+                            depth: depth,
+                            highlightLine: 'line-pop-2'
+                        });
+                    }
+                }
+                
+                backtrack(0, [], 0, 0);
+            }
+
+            generateTrace(nums);
+
+            // --- 2. WEB AUDIO API FOR SOUND EFFECTS ---
+            // (No changes here, sound logic remains the same)
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            function playSound(type) {
+                if (!audioCtx || audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.01);
+                
+                switch(type) {
+                    case 'step': 
+                        oscillator.type = 'triangle';
+                        oscillator.frequency.setValueAtTime(330, audioCtx.currentTime);
+                        break;
+                    case 'leaf':
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(659, audioCtx.currentTime);
+                        break;
+                    case 'prune':
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(110, audioCtx.currentTime);
+                        gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.01);
+                        break;
+                }
+                
+                oscillator.start(audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.25);
+                oscillator.stop(audioCtx.currentTime + 0.25);
+            }
+
+            // --- 3. D3.JS VISUALIZATION SETUP ---
+            const svg = d3.select('.tree-svg');
+            const tooltip = d3.select('.tooltip');
+            const g = svg.append('g');
+
+            const treeLayout = d3.tree().nodeSize([120, 120]); 
+            
+            let currentStep = 0;
+            let isPlaying = false;
+            let playInterval;
+
+            const traceMap = new Map(trace.map(d => [d.id, d]));
+
+            function updateVisualization() {
+                const stepData = trace[currentStep];
+                
+                const activePathIds = new Set();
+                let currentPathNode = stepData;
+                while(currentPathNode) {
+                    activePathIds.add(currentPathNode.id);
+                    currentPathNode = traceMap.get(currentPathNode.parentId);
+                }
+                
+                const visibleNodeIds = new Set(activePathIds);
+                trace.forEach(d => {
+                    if (activePathIds.has(d.parentId)) {
+                        visibleNodeIds.add(d.id);
+                    }
+                });
+                
+                // We don't want to draw the root node (id: 0), but use it for hierarchy.
+                const visibleTrace = trace.filter(d => visibleNodeIds.has(d.id));
+
+                // Guard against empty trace for stratify
+                if (visibleTrace.length === 0) return;
+
+                const root = d3.stratify()
+                    .id(d => d.id)
+                    .parentId(d => d.parentId) // FIX: Correctly access parentId
+                    (visibleTrace);
+                
+                const treeData = treeLayout(root);
+                const nodes = treeData.descendants();
+                const links = treeData.links();
+                
+                const { width, height } = svg.node().getBoundingClientRect();
+                const activeNode = nodes.find(n => n.id == stepData.id);
+                
+                if (activeNode) {
+                    svg.transition().duration(500)
+                       .call(zoom.transform, d3.zoomIdentity.translate(width / 2 - activeNode.x, height / 2 - activeNode.y));
+                }
+
+                const linkGenerator = d3.linkVertical().x(node => node.x).y(node => node.y);
+                const linkSelection = g.selectAll('.link').data(links, d => `${d.source.id}-${d.target.id}`);
+
+                linkSelection.exit().transition().duration(500)
+                    .attr('d', d => linkGenerator({ source: d.source, target: d.source }))
+                    .remove();
+
+                const linkEnter = linkSelection.enter().append('path')
+                    .attr('class', 'link')
+                    .attr('d', d => linkGenerator({ source: d.source, target: d.source }));
+
+                linkEnter.merge(linkSelection)
+                    .transition().duration(500)
+                    .attr('d', linkGenerator);
+                
+                const nodeSelection = g.selectAll('.node').data(nodes.filter(n => n.id != 0), d => d.id); // Filter out root node from rendering
+                const nodeEnter = nodeSelection.enter()
+                    .append('g')
+                    .attr('class', d => `node node-${d.data.action}`)
+                    .attr('transform', d => `translate(${d.parent ? d.parent.x : d.x}, ${d.parent ? d.parent.y : d.y})`)
+                    .on('mouseover', (event, d) => {
+                        if (d.data.action === 'prune') {
+                            tooltip.style('opacity', 1)
+                                   .html(`Pruned: ${d.data.reason}`)
+                                   .style('left', (event.pageX + 15) + 'px')
+                                   .style('top', (event.pageY - 10) + 'px');
+                        }
+                    })
+                    .on('mouseout', () => tooltip.style('opacity', 0));
+                
+                nodeEnter.append('circle').attr('r', 20);
+                nodeEnter.append('text')
+                    .attr('dy', '0.35em')
+                    .text(d => `{${d.data.subset.join(',')}}`);
+
+                nodeEnter.merge(nodeSelection)
+                    .transition().duration(500)
+                    .attr('transform', d => `translate(${d.x}, ${d.y})`);
+                
+                nodeSelection.exit().transition().duration(500)
+                    .attr('transform', d => `translate(${d.x}, ${d.y - 50})`)
+                    .style('opacity', 0)
+                    .remove();
+
+                g.selectAll('.node')
+                  .classed('node-active', d => d.id == stepData.id)
+                  .classed('node-leaf', d => d.data.action === 'leaf');
+
+                g.selectAll('.link')
+                  .classed('link-active', d => activePathIds.has(d.source.id) && activePathIds.has(d.target.id));
+                
+                updateUIState();
+            }
+
+            // --- 4. UI STATE & INTERACTIVITY ---
+            const depthStat = document.getElementById('depth-stat');
+            const callsStat = document.getElementById('calls-stat');
+            const subsetsStat = document.getElementById('subsets-stat');
+            const subsetsOutput = document.getElementById('subsets-output');
+            const codeBlock = document.getElementById('code-block');
+            const allCodeLines = codeBlock.querySelectorAll('span[id^="line-"]');
+
+            function updateUIState() {
+                const stepData = trace[currentStep];
+                
+                // Update stats
+                depthStat.textContent = stepData.depth;
+                callsStat.textContent = currentStep;
+                
+                const foundSubsets = trace.slice(0, currentStep + 1).filter(t => t.action === 'leaf');
+                subsetsStat.textContent = 1 + foundSubsets.length; // +1 for the initial empty set
+
+                // Update final subsets panel
+                subsetsOutput.innerHTML = '';
+                const emptySetDiv = document.createElement('div');
+                emptySetDiv.className = 'subset-item';
+                emptySetDiv.textContent = '{}';
+                subsetsOutput.appendChild(emptySetDiv);
+
+                foundSubsets.forEach(s => {
+                    const subsetDiv = document.createElement('div');
+                    subsetDiv.className = 'subset-item';
+                    subsetDiv.textContent = `{${s.subset.join(',')}}`;
+                    subsetsOutput.appendChild(subsetDiv);
+                });
+                
+                // Highlight the last added subset
+                if (stepData.action === 'leaf' && subsetsOutput.lastChild) {
+                    subsetsOutput.lastChild.classList.add('new');
+                    setTimeout(() => subsetsOutput.lastChild?.classList.remove('new'), 500);
+                }
+
+
+                // Highlight code line
+                allCodeLines.forEach(line => line.classList.remove('line-highlight'));
+                if (stepData.highlightLine) {
+                    document.getElementById(stepData.highlightLine)?.classList.add('line-highlight');
+                }
+            }
+
+            function performStep(direction) {
+                const nextStep = currentStep + direction;
+                if (nextStep >= 0 && nextStep < trace.length) {
+                    currentStep = nextStep;
+                    const action = trace[currentStep].action;
+
+                    if (direction > 0) { // Only play sounds on forward steps
+                        if (action === 'leaf') playSound('leaf');
+                        else if (action === 'prune') playSound('prune');
+                        else if (action !== 'root') playSound('step');
+                    }
+                    
+                    updateVisualization();
+                } else if (isPlaying) {
+                    pause();
+                }
+            }
+
+            const playPauseBtn = document.getElementById('play-pause');
+            function play() {
+                playPauseBtn.textContent = 'Pause';
+                isPlaying = true;
+                playInterval = setInterval(() => performStep(1), 800);
+            }
+
+            function pause() {
+                playPauseBtn.textContent = 'Play';
+                isPlaying = false;
+                clearInterval(playInterval);
+            }
+            
+            document.getElementById('next-step').addEventListener('click', () => { pause(); performStep(1); });
+            document.getElementById('prev-step').addEventListener('click', () => { pause(); performStep(-1); });
+            playPauseBtn.addEventListener('click', () => {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                isPlaying ? pause() : play();
+            });
+            
+            const zoom = d3.zoom().scaleExtent([0.1, 2]).on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+            svg.call(zoom);
+
+            updateVisualization();
+        });
+    </script>
+</body>
+</html>

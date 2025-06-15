@@ -1,0 +1,184 @@
+/* General Body & App Styling */
+:root {
+    --bg-color: #121212;
+    --surface-color: #1e1e1e;
+    --primary-color: #03dac6;
+    --primary-variant-color: #3700b3;
+    --text-color: #e0e0e0;
+    --text-color-secondary: #a0a0a0;
+    --hover-bg-color: rgba(255, 255, 255, 0.05);
+    --border-color: rgba(255, 255, 255, 0.1);
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    overflow: hidden;
+}
+
+#app-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar Styling */
+#sidebar {
+    width: 300px;
+    background: rgba(30, 30, 30, 0.7); /* Translucent background */
+    backdrop-filter: blur(10px);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+}
+
+.sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Search Bar */
+.search-container {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+#search-input {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    color: var(--text-color);
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+#search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px var(--primary-color);
+}
+
+/* File Tree */
+#file-tree-container {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding: 10px;
+}
+
+/* Custom Scrollbar */
+#file-tree-container::-webkit-scrollbar { width: 8px; }
+#file-tree-container::-webkit-scrollbar-track { background: transparent; }
+#file-tree-container::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+#file-tree-container::-webkit-scrollbar-thumb:hover { background: #555; }
+
+
+ul.file-tree {
+    list-style-type: none;
+    padding-left: 0;
+}
+ul.file-tree ul {
+    padding-left: 20px;
+}
+
+li.tree-item {
+    padding: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+li.tree-item.hidden { display: none; }
+
+li.tree-item > div {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+}
+li.tree-item:hover { background-color: var(--hover-bg-color); }
+
+.tree-item-icon {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+    color: var(--text-color-secondary);
+}
+.tree-item-icon .folder-arrow {
+    transition: transform 0.2s ease;
+    display: inline-block;
+}
+.tree-item.collapsed > div > .tree-item-icon > .folder-arrow { transform: rotate(-90deg); }
+
+a.tree-item-link {
+    color: var(--text-color);
+    text-decoration: none;
+    flex-grow: 1;
+}
+a.tree-item-link:hover { color: var(--primary-color); }
+
+/* Main Content Styling */
+#main-content {
+    flex-grow: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+#main-content header, #main-content .content-body {
+    max-width: 800px;
+    margin: 0 auto;
+    animation: fadeIn 0.5s ease-in-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#main-content h1 { font-weight: 700; color: #fff; }
+#main-content code {
+    background-color: var(--surface-color);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Loader Animation */
+#loader {
+    border: 4px solid var(--surface-color);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 40px auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    #app-container {
+        flex-direction: column;
+    }
+    #sidebar {
+        width: 100%;
+        height: 40vh; /* Give sidebar a fixed height on mobile */
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    #main-content {
+        padding: 20px;
+    }
+}
